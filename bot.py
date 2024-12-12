@@ -1,10 +1,10 @@
 from threading import Thread
-
 from fastapi import FastAPI
 import discord
 import dotenv
 import uvicorn
 from discord.ext import commands
+import nacl
 import asyncio
 import yt_dlp as youtube_dl
 import os  # 環境変数からトークンを取得するために使用
