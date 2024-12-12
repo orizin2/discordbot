@@ -187,10 +187,6 @@ async def disconnect(ctx):
     else:
         await ctx.send("ボイスチャンネルに接続されていません。")
 
-
-bot_token = os.environ.get("TOKEN")
-bot.run(bot_token)
-
 app = FastAPI()
 @app.get("/")
 async def root():
@@ -200,6 +196,9 @@ def start():
     uvicorn.run(app,host="0.0.0.0", port=8080)
 t = Thread(target=start)
 t.start()
+
+bot_token = os.environ.get("TOKEN")
+bot.run(bot_token)
 
 import discord
 from discord.ext import commands, tasks
