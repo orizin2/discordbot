@@ -1,6 +1,6 @@
 import os  # 環境変数からトークンを取得するために使用
 from threading import Thread
-
+import nacl
 import discord
 import dotenv
 import uvicorn
