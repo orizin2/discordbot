@@ -6,6 +6,7 @@ import dotenv
 import uvicorn
 from discord.ext import commands
 from fastapi import FastAPI
+import yt_dlp as youtube_dl
 
 dotenv.load_dotenv()
 
