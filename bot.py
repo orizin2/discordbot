@@ -24,30 +24,30 @@ ffmpeg_options = {
 
 import yt_dlp as youtube_dl
 
+import yt_dlp as youtube_dl
+
+# yt_dlpのオプション
 ydl_opts = {
     'format': 'bestaudio/best',
     'quiet': True,
     'noplaylist': True,
-    'cookies': './cookies.txt',  # クッキーのパスを指定してください
+    'cookies': './cookies.txt',  # クッキーが必要な場合に設定
 }
 
-def search_youtube(query):
+# YouTube URLで音楽をダウンロードする関数
+def download_audio(url):
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         try:
-            # クエリで検索して最初のエントリを取得
-            info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
-            return info['webpage_url']
+            # 情報を取得してダウンロード
+            info = ydl.extract_info(url, download=False)
+            print(f"ダウンロード成功: {info['title']}")
         except Exception as e:
-            print(f"エラーが発生しました: {e}")
-            return None
+            print(f"ダウンロードエラー: {e}")
 
-# YouTubeのURLを例として使用
-url = "https://www.youtube.com/watch?v=example"
-with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-    try:
-        ydl.download([url])
-    except Exception as e:
-        print(f"ダウンロードエラー: {e}")
+# 正しいYouTube URLを使用
+youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+download_audio(youtube_url)
+
 
 
 # yt-dlp を実行する際にカスタム引数を渡す
