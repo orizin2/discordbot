@@ -23,6 +23,25 @@ ffmpeg_options = {
 }
 
 ydl_opts = {
+    'format': 'best audio/best',
+    'quiet': True,
+    'playlist': True,
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'cookiefile': None,
+    'noprogress': True,
+}
+
+# yt-dlp を実行する際にカスタム引数を渡す
+yt_dlp_command = f"--cookies-from-browser chrome"  # 使用しているブラウザに応じて変更
+with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    ydl.add_default_extra_info(yt_dlp_command)
+
+
+ydl_opts = {
     'format': 'bestaudio/best',
     'quiet': True,
     'noplaylist': True,
