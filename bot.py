@@ -22,18 +22,33 @@ ffmpeg_options = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin'
 }
 
+import yt_dlp as youtube_dl
+
 ydl_opts = {
-    'format': 'best audio/best',
+    'format': 'bestaudio/best',
     'quiet': True,
-    'playlist': True,
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'cookiefile': None,
-    'noprogress': True,
+    'noplaylist': True,
+    'cookies': './cookies.txt',  # クッキーのパスを指定してください
 }
+
+def search_youtube(query):
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        try:
+            # クエリで検索して最初のエントリを取得
+            info = ydl.extract_info(f"ytsearch:{query}", download=False)['entries'][0]
+            return info['webpage_url']
+        except Exception as e:
+            print(f"エラーが発生しました: {e}")
+            return None
+
+# YouTubeのURLを例として使用
+url = "https://www.youtube.com/watch?v=example"
+with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    try:
+        ydl.download([url])
+    except Exception as e:
+        print(f"ダウンロードエラー: {e}")
+
 
 # yt-dlp を実行する際にカスタム引数を渡す
 yt_dlp_command = f"--cookies-from-browser chrome"  # 使用しているブラウザに応じて変更
