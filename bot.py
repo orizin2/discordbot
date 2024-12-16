@@ -25,50 +25,6 @@ ydl_opts = {
     "cookies": "./cookies.txt",  # YouTube クッキーのパス
 }
 
-# Twitch API の設定
-TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
-TWITCH_ACCESS_TOKEN = os.getenv("TWITCH_ACCESS_TOKEN")
-TWITCH_USERNAME = os.getenv("TWITCH_USERNAME")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
-MENTION_ROLE_ID = int(os.getenv("MENTION_ROLE_ID"))
-
-# 配信状態の追跡
-is_streaming = False
-
-# 配信者の配信状況を取得する関数
-def check_stream_status():
-    headers = {
-        "Client-ID": TWITCH_CLIENT_ID,
-        "Authorization": f"Bearer {TWITCH_ACCESS_TOKEN}"
-    }
-    params = {"user_login": TWITCH_USERNAME}
-    response = requests.get("https://api.twitch.tv/helix/streams", headers=headers, params=params)
-    data = response.json()
-
-    if "data" in data and len(data["data"]) > 0:
-        return True  # 配信中
-    return False  # 配信していない
-
-# 定期的に配信状況を確認するタスク
-@tasks.loop(minutes=1)
-async def notify_stream_start():
-    global is_streaming
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-
-    if not channel:
-        print("Discord チャンネルが見つかりませんでした。")
-        return
-
-    streaming_now = check_stream_status()
-
-    if streaming_now and not is_streaming:
-        is_streaming = True
-        mention = f"<@&{MENTION_ROLE_ID}>" if MENTION_ROLE_ID else ""
-        await channel.send(f"{mention} 🎥 {TWITCH_USERNAME} さんが Twitch で配信を開始しました！\nhttps://www.twitch.tv/{TWITCH_USERNAME}")
-
-    elif not streaming_now and is_streaming:
-        is_streaming = False
-        print("配信が終了しました。")
 
 # FastAPI アプリケーション
 app = FastAPI()
