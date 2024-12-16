@@ -1,75 +1,91 @@
-import os  # 環境変数からトークンを取得するために使用
+import os
 from threading import Thread
-import nacl
 import discord
 import dotenv
 import uvicorn
-from discord.ext import commands
+from discord.ext import commands, tasks
 from fastapi import FastAPI
 import yt_dlp as youtube_dl
+import requests
+import asyncio
 
 dotenv.load_dotenv()
 
+# Discord ボットの設定
 intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True  # ボイスステートを有効にする
+intents.voice_states = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# デフォルトのFFmpegオプション。音量オプションは後で追加する。
-ffmpeg_options = {
-    'options': '-vn',
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin'
-}
-
-
-
-
-import yt_dlp
-
-# Set the options (including custom arguments)
+# yt-dlp のオプション設定
 ydl_opts = {
-    'cookiefile': '/path/to/cookies.txt',  # Path to your cookie file
-    'extractor_args': {
-        'youtube': {
-            'cookies_from_browser': 'chrome'  # Browser-specific flag
-        }
-    },
+    "format": "bestaudio/best",
+    "quiet": False,
+    "cookies": "./cookies.txt",  # YouTube クッキーのパス
 }
 
-# URL you want to extract or download
-youtube_url = 'https://www.youtube.com/watch?v=example_video_id'
+# Twitch API の設定
+TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
+TWITCH_ACCESS_TOKEN = os.getenv("TWITCH_ACCESS_TOKEN")
+TWITCH_USERNAME = os.getenv("TWITCH_USERNAME")
+DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
+MENTION_ROLE_ID = int(os.getenv("MENTION_ROLE_ID"))
 
-# Create the YoutubeDL object with the options
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    try:
-        # Get video information (don't download)
-        info = ydl.extract_info(youtube_url, download=False)
-        print(f"Download successful: {info['title']}")
-    except Exception as e:
-        print(f"Error occurred: {e}")
+# 配信状態の追跡
+is_streaming = False
 
+# 配信者の配信状況を取得する関数
+def check_stream_status():
+    headers = {
+        "Client-ID": TWITCH_CLIENT_ID,
+        "Authorization": f"Bearer {TWITCH_ACCESS_TOKEN}"
+    }
+    params = {"user_login": TWITCH_USERNAME}
+    response = requests.get("https://api.twitch.tv/helix/streams", headers=headers, params=params)
+    data = response.json()
 
+    if "data" in data and len(data["data"]) > 0:
+        return True  # 配信中
+    return False  # 配信していない
 
+# 定期的に配信状況を確認するタスク
+@tasks.loop(minutes=1)
+async def notify_stream_start():
+    global is_streaming
+    channel = bot.get_channel(DISCORD_CHANNEL_ID)
 
-# yt-dlp を実行する際にカスタム引数を渡す
-yt_dlp_command = f"--cookies-from-browser chrome"  # 使用しているブラウザに応じて変更
-with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-    ydl.add_default_extra_info(yt_dlp_command)
+    if not channel:
+        print("Discord チャンネルが見つかりませんでした。")
+        return
 
+    streaming_now = check_stream_status()
 
-ydl_opts = {
-    'format': 'bestaudio/best',
-    'quiet': True,
-    'noplaylist': True,
-}
+    if streaming_now and not is_streaming:
+        is_streaming = True
+        mention = f"<@&{MENTION_ROLE_ID}>" if MENTION_ROLE_ID else ""
+        await channel.send(f"{mention} 🎥 {TWITCH_USERNAME} さんが Twitch で配信を開始しました！\nhttps://www.twitch.tv/{TWITCH_USERNAME}")
 
-queue = []
-looping = False
+    elif not streaming_now and is_streaming:
+        is_streaming = False
+        print("配信が終了しました。")
+
+# FastAPI アプリケーション
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "Bot is running!"}
+
+# FastAPI サーバーをスレッドで起動する関数
+def start():
+    uvicorn.run(app, host="0.0.0.0", port=8080)
+
+# グローバル変数の初期化
 current_url = None
-volume = 1.0  # デフォルトの音量
+volume = 1.0  # デフォルト音量
 
-
+# YouTube 動画検索用の関数
 def search_youtube(query):
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         try:
@@ -79,18 +95,7 @@ def search_youtube(query):
             print(f"エラーが発生しました: {e}")
             return None
 
-
-async def play_next(ctx):
-    global current_url
-    if looping and current_url:
-        await ctx.invoke(bot.get_command('play'), url=current_url)
-    elif queue:
-        current_url = queue.pop(0)  # キューから次の楽曲を取得して再生
-        await ctx.invoke(bot.get_command('play'), url=current_url)
-    else:
-        current_url = None  # キューが空になったら、現在のURLをリセット
-
-
+# 音楽再生のためのコマンド
 @bot.command(name='play', help='指定されたURLまたはキーワードで音楽を再生します')
 async def play(ctx, *, url: str):
     global current_url
@@ -128,165 +133,31 @@ async def play(ctx, *, url: str):
             url2 = info['url']
 
         # 音量設定を追加したFFmpegコマンドを使用
-        ffmpeg_options_with_volume = ffmpeg_options.copy()
-        ffmpeg_options_with_volume['options'] += f' -af "volume={volume}"'
+        ffmpeg_options = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
+            'options': f'-vn -af "volume={volume}"'
+        }
 
-        voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options_with_volume),
+        voice_client.play(discord.FFmpegPCMAudio(url2, **ffmpeg_options),
                           after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), bot.loop))
 
     await ctx.send(f"再生中: {url}")
 
+# 次の曲を再生する関数
+async def play_next(ctx):
+    if current_url:
+        await ctx.invoke(bot.get_command('play'), url=current_url)
 
-@bot.command(name='pause', help='音楽を一時停止します')
-async def pause(ctx):
-    if ctx.voice_client.is_playing():
-        ctx.voice_client.pause()
-        await ctx.send("音楽を一時停止しました。")
-    else:
-        await ctx.send("現在再生中の音楽はありません。")
-
-
-@bot.command(name='resume', help='音楽を再開します')
-async def resume(ctx):
-    if ctx.voice_client.is_paused():
-        ctx.voice_client.resume()
-        await ctx.send("音楽を再開しました。")
-    else:
-        await ctx.send("再開する音楽はありません。")
-
-
-@bot.command(name='stop', help='音楽を停止します')
-async def stop(ctx):
-    if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
-        ctx.voice_client.stop()
-        await ctx.send("音楽を停止しました。")
-    else:
-        await ctx.send("停止する音楽はありません。")
-
-
-@bot.command(name='loop', help='現在の曲をループします')
-async def loop(ctx):
-    global looping
-    looping = not looping
-    if looping:
-        await ctx.send("ループを有効にしました。")
-    else:
-        await ctx.send("ループを無効にしました。")
-
-
-@bot.command(name='skip', help='次の曲にスキップします')
-async def skip(ctx):
-    if ctx.voice_client.is_playing():
-        ctx.voice_client.stop()
-        await ctx.send("次の曲にスキップしました。")
-    else:
-        await ctx.send("スキップする曲はありません。")
-
-
-@bot.command(name='volume', help='音量を設定します（例: !volume 0.5 で音量を半分に）')
-async def set_volume(ctx, vol: float):
-    global volume
-    if 0 <= vol <= 2:
-        volume = vol
-        await ctx.send(f"音量を {volume * 100}% に設定しました。")
-    else:
-        await ctx.send("音量は0から2の範囲で設定してください。")
-
-
-@bot.command(name='join', help='ボイスチャンネルに参加します')
-async def join(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        if ctx.voice_client is not None:
-            if ctx.voice_client.channel == channel:
-                await ctx.send("既にボイスチャンネルに接続されています。")
-                return
-            else:
-                await ctx.voice_client.disconnect()
-        try:
-            await channel.connect()
-            await ctx.send(f"ボイスチャンネル {channel} に参加しました。")
-        except discord.ClientException:
-            await ctx.send("ボイスチャンネルへの接続に失敗しました。")
-        except Exception as e:
-            await ctx.send(f"エラーが発生しました: {e}")
-    else:
-        await ctx.send("ボイスチャンネルに接続されていません。")
-
-
-@bot.command(name='disconnect', help='ボイスチャンネルから退出します')
-async def disconnect(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("ボイスチャンネルから退出しました。")
-    else:
-        await ctx.send("ボイスチャンネルに接続されていません。")
-
-app = FastAPI()
-@app.get("/")
-async def root():
-    return {"message": "aaa"}
-
-app.run(host='0.0.0.0', port=8080)
-
-bot_token = os.environ.get("TOKEN")
-bot.run(bot_token)
-
-import discord
-from discord.ext import tasks
-import asyncio
-import yt_dlp as youtube_dl
-import requests
-
-# Twitch API の設定
-TWITCH_CLIENT_ID = "YOUR_TWITCH_CLIENT_ID"
-TWITCH_ACCESS_TOKEN = "YOUR_TWITCH_ACCESS_TOKEN"
-TWITCH_USERNAME = "kotoha_hkll"
-DISCORD_CHANNEL_ID = 943452560847695884  # 通知を送る Discord チャンネルの ID
-MENTION_ROLE_ID = 733529800219557928  # メンションする役職の ID (オプション)
-
-# 配信状態の追跡
-is_streaming = False
-
-# 配信者の配信状況を取得する関数
-def check_stream_status():
-    headers = {
-        "Client-ID": TWITCH_CLIENT_ID,
-        "Authorization": f"Bearer {TWITCH_ACCESS_TOKEN}"
-    }
-    params = {
-        "user_login": TWITCH_USERNAME
-    }
-    response = requests.get("https://api.twitch.tv/helix/streams", headers=headers, params=params)
-    data = response.json()
-
-    if "data" in data and len(data["data"]) > 0:
-        return True  # 配信中
-    return False  # 配信していない
-
-# 定期的に配信状況を確認するタスク
-@tasks.loop(minutes=1)
-async def notify_stream_start():
-    global is_streaming
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-
-    if not channel:
-        print("Discord チャンネルが見つかりませんでした。")
-        return
-
-    streaming_now = check_stream_status()
-
-    if streaming_now and not is_streaming:
-        is_streaming = True
-        mention = f"<@&{MENTION_ROLE_ID}>" if MENTION_ROLE_ID else ""
-        await channel.send(f"{mention} 🎥 {TWITCH_USERNAME} さんが Twitch で配信を開始しました！\nhttps://www.twitch.tv/{TWITCH_USERNAME}")
-
-    elif not streaming_now and is_streaming:
-        is_streaming = False
-        print("配信が終了しました。")
-
-# ボットが起動したときに通知タスクを開始
+# ボットの起動時に通知タスクを開始
 @bot.event
 async def on_ready():
     print(f"Bot としてログイン: {bot.user}")
     notify_stream_start.start()
+
+# FastAPI サーバーを別スレッドで起動
+t = Thread(target=start)
+t.start()
+
+# Discord ボットを実行
+bot_token = os.getenv("TOKEN")
+bot.run(bot_token)
