@@ -25,29 +25,30 @@ ffmpeg_options = {
 
 
 
-# yt-dlp のオプション設定
+import yt_dlp
+
+# Set the options (including custom arguments)
 ydl_opts = {
-    'format': 'bestaudio/best',          # 最良の音声フォーマットを選択
-    'quiet': False,                      # ログを表示
-    'outtmpl': '%(title)s.%(ext)s',      # 出力ファイルのフォーマット
-    'cookiesfrombrowser': ('chrome',),    # 使用するブラウザ（例: Chrome）からクッキーを取得
-    'extractaudio': True,                # 音声のみを抽出
-    'audioquality': 1,                   # 音声品質設定 (1 = 高品質)
-    'noplaylist': True,                  # プレイリストのダウンロードを無効にする
-    'proxy': 'http://your.proxy.server', # プロキシ設定（必要な場合）
+    'cookiefile': '/path/to/cookies.txt',  # Path to your cookie file
+    'extractor_args': {
+        'youtube': {
+            'cookies_from_browser': 'chrome'  # Browser-specific flag
+        }
+    },
 }
 
-# 使用するYouTube動画のURL（正しいURLを指定）
-youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # ここに正しい動画URLを設定
+# URL you want to extract or download
+youtube_url = 'https://www.youtube.com/watch?v=example_video_id'
 
-# yt-dlp を使用して情報を取得（ダウンロードせずに情報のみ取得）
-with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+# Create the YoutubeDL object with the options
+with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     try:
-        # 動画情報を取得（ダウンロードせずに情報のみ取得）
+        # Get video information (don't download)
         info = ydl.extract_info(youtube_url, download=False)
-        print(f"ダウンロード成功: {info['title']}")
+        print(f"Download successful: {info['title']}")
     except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        print(f"Error occurred: {e}")
+
 
 
 
