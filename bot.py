@@ -226,10 +226,7 @@ app = FastAPI()
 async def root():
     return {"message": "aaa"}
 
-def start():
-    uvicorn.run(app,host="0.0.0.0", port=8080)
-t = Thread(target=start)
-t.start()
+app.run(host='0.0.0.0', port=8080)
 
 bot_token = os.environ.get("TOKEN")
 bot.run(bot_token)
