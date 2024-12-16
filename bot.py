@@ -31,8 +31,8 @@ ydl_opts = {
     'cookiesfrombrowser': ('chrome',),   # 使用するブラウザ（例: Chrome）からクッキーを取得
 }
 
-# 使用する有効なYouTube動画のURL
-youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # 有効な動画URLを指定
+# 使用するYouTube動画のURL（例：正しい動画URLを指定）
+youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # 動画URLをここに設定
 
 # yt-dlp を使用して情報を取得またはダウンロードする
 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
