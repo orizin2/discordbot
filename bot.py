@@ -26,26 +26,23 @@ import yt_dlp as youtube_dl
 
 import yt_dlp as youtube_dl
 
-# yt_dlpのオプション
+# yt_dlpのオプション設定
 ydl_opts = {
-    'format': 'bestaudio/best',
-    'quiet': True,
-    'noplaylist': True,
-    'cookies': './cookies.txt',  # クッキーが必要な場合に設定
+    'format': 'bestaudio/best',  # 音声のベストフォーマットを選択
+    'quiet': False,             # ログを表示
+    'cookies': './cookies.txt', # YouTubeクッキーを指定
 }
 
-# YouTube URLで音楽をダウンロードする関数
 def download_audio(url):
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         try:
-            # 情報を取得してダウンロード
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(url, download=False)  # 情報のみ取得
             print(f"ダウンロード成功: {info['title']}")
         except Exception as e:
-            print(f"ダウンロードエラー: {e}")
+            print(f"エラー: {e}")
 
-# 正しいYouTube URLを使用
-youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+# 使用するURL
+youtube_url = "https://www.youtube.com/?app=desktop&hl=ja"  # 正しいURLを使用
 download_audio(youtube_url)
 
 
