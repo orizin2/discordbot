@@ -26,13 +26,13 @@ ffmpeg_options = {
 
 # yt-dlp のオプション設定
 ydl_opts = {
-    'format': 'bestaudio/best',          # 最良の音声形式を選択
-    'quiet': False,                      # ログを表示
-    'cookiesfrombrowser': ('chrome',),   # 使用するブラウザ（例: Chrome）からクッキーを取得
+    'format': 'bestaudio/best',           # 最良の音声形式を選択
+    'quiet': False,                       # ログを表示
+    'cookiesfrombrowser': ('chrome',),    # 使用するブラウザ（例: Chrome）からクッキーを取得
 }
 
 # 使用するYouTube動画のURL（例：正しい動画URLを指定）
-youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # 動画URLをここに設定
+youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # ここに正しい動画URLを設定
 
 # yt-dlp を使用して情報を取得またはダウンロードする
 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
