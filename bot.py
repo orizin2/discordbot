@@ -28,20 +28,20 @@ ffmpeg_options = {
 ydl_opts = {
     'format': 'bestaudio/best',          # 最良の音声形式を選択
     'quiet': False,                      # ログを表示
-    'cookiesfrombrowser': ('chrome',),   # 使用しているブラウザ（例: Chrome）からクッキーを取得
+    'cookiesfrombrowser': ('chrome',),   # 使用するブラウザ（例: Chrome）からクッキーを取得
 }
 
-# 動画のURL
-youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # 適切なYouTube動画URLを指定
+# 使用する有効なYouTube動画のURL
+youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"  # 有効な動画URLを指定
 
-# yt-dlp を使用して情報を取得する
+# yt-dlp を使用して情報を取得またはダウンロードする
 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
     try:
         # 動画情報を取得（ダウンロードせずに情報のみ取得）
         info = ydl.extract_info(youtube_url, download=False)
         print(f"ダウンロード成功: {info['title']}")
     except Exception as e:
-        print(f"エラー: {e}")
+        print(f"エラーが発生しました: {e}")
 
 
 
